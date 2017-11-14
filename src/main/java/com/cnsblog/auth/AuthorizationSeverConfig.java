@@ -1,6 +1,7 @@
 package com.cnsblog.auth;
 
 import java.security.KeyPair;
+import java.util.Arrays;
 
 import javax.sql.DataSource;
 
@@ -18,6 +19,8 @@ import org.springframework.security.oauth2.config.annotation.web.configurers.Aut
 import org.springframework.security.oauth2.provider.ClientDetailsService;
 import org.springframework.security.oauth2.provider.client.JdbcClientDetailsService;
 import org.springframework.security.oauth2.provider.token.DefaultTokenServices;
+import org.springframework.security.oauth2.provider.token.TokenEnhancer;
+import org.springframework.security.oauth2.provider.token.TokenEnhancerChain;
 import org.springframework.security.oauth2.provider.token.TokenStore;
 import org.springframework.security.oauth2.provider.token.store.JwtAccessTokenConverter;
 import org.springframework.security.oauth2.provider.token.store.JwtTokenStore;
@@ -43,6 +46,11 @@ public class AuthorizationSeverConfig extends AuthorizationServerConfigurerAdapt
         return new JwtTokenStore(accessTokenConverter());
     }
 
+    @Bean
+    public TokenEnhancer tokenEnhancer() {
+        return new CustomTokenEnhancer();
+    }
+
 	@Bean
 	public JwtAccessTokenConverter accessTokenConverter() {
 		JwtAccessTokenConverter converter = new JwtAccessTokenConverter();
@@ -65,7 +73,10 @@ public class AuthorizationSeverConfig extends AuthorizationServerConfigurerAdapt
 
 	@Override
 	public void configure(AuthorizationServerEndpointsConfigurer endpoints) throws Exception {
-		endpoints.tokenStore(tokenStore()).authenticationManager(authenticationManager).accessTokenConverter(accessTokenConverter());
+		TokenEnhancerChain tokenEnhancerChain = new TokenEnhancerChain();
+	    tokenEnhancerChain.setTokenEnhancers(
+	    Arrays.asList(tokenEnhancer(), accessTokenConverter()));
+		endpoints.tokenStore(tokenStore()).tokenEnhancer(tokenEnhancerChain).authenticationManager(authenticationManager).accessTokenConverter(accessTokenConverter());
 	}
 
 	@Bean
