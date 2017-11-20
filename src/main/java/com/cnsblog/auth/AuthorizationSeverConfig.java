@@ -16,6 +16,7 @@ import org.springframework.security.oauth2.config.annotation.configurers.ClientD
 import org.springframework.security.oauth2.config.annotation.web.configuration.AuthorizationServerConfigurerAdapter;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableAuthorizationServer;
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerEndpointsConfigurer;
+import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerSecurityConfigurer;
 import org.springframework.security.oauth2.provider.ClientDetailsService;
 import org.springframework.security.oauth2.provider.client.JdbcClientDetailsService;
 import org.springframework.security.oauth2.provider.token.DefaultTokenServices;
@@ -34,8 +35,8 @@ public class AuthorizationSeverConfig extends AuthorizationServerConfigurerAdapt
 	@Value("${resouce.id:spring-boot-application}")
 	private String resourceId;
 
-	@Value("${access_token.validity_period:3600}")
-	int accessTokenValiditySeconds = 3600;
+	@Value("${access_token.validity_period:1}")
+	int accessTokenValiditySeconds = 1;
 
 	@Autowired
 	private AuthenticationManager authenticationManager;
@@ -67,6 +68,8 @@ public class AuthorizationSeverConfig extends AuthorizationServerConfigurerAdapt
 		DefaultTokenServices defaultTokenServices = new DefaultTokenServices();
 		defaultTokenServices.setTokenStore(tokenStore());
 		defaultTokenServices.setSupportRefreshToken(true);
+		defaultTokenServices.setReuseRefreshToken(true);
+		defaultTokenServices.setRefreshTokenValiditySeconds(1);
 		return defaultTokenServices;
 	}
 
@@ -74,9 +77,12 @@ public class AuthorizationSeverConfig extends AuthorizationServerConfigurerAdapt
 	@Override
 	public void configure(AuthorizationServerEndpointsConfigurer endpoints) throws Exception {
 		TokenEnhancerChain tokenEnhancerChain = new TokenEnhancerChain();
-	    tokenEnhancerChain.setTokenEnhancers(
-	    Arrays.asList(tokenEnhancer(), accessTokenConverter()));
+	    tokenEnhancerChain.setTokenEnhancers(Arrays.asList(tokenEnhancer(), accessTokenConverter()));
 		endpoints.tokenStore(tokenStore()).tokenEnhancer(tokenEnhancerChain).authenticationManager(authenticationManager).accessTokenConverter(accessTokenConverter());
+	}
+	@Override
+	public void configure(AuthorizationServerSecurityConfigurer oauthServer) throws Exception {
+		oauthServer.tokenKeyAccess("permitAll()").checkTokenAccess("isAuthenticated()");
 	}
 
 	@Bean
@@ -89,20 +95,9 @@ public class AuthorizationSeverConfig extends AuthorizationServerConfigurerAdapt
 	@Autowired
 	private ClientDetailsService clientDetailsService;
 
+
 	@Override
 	public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
-		//oauth_client_details 테이블에 등록된 사용자로 조회한다.
 		clients.withClientDetails(clientDetailsService);
-
-		/*
-		clients.inMemory()
-				.withClient("bar").secret("foo")
-				.authorizedGrantTypes("password")
-				.authorities("ROLE_USER")
-				.scopes("read", "write")
-				.resourceIds(resourceId)
-				.accessTokenValiditySeconds(accessTokenValiditySeconds);
-		*/
-
 	}
 }
